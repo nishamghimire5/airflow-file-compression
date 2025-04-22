@@ -127,11 +127,14 @@ trigger_processing_dag = TriggerDagRunOperator(
     task_id='trigger_processing_dag',
     trigger_dag_id='minio_event_workflow_dag',  # The main DAG that processes files
     conf=lambda context: {
-        "file_key": context['ti'].xcom_pull(task_ids='detect_new_files')['key']
+        "file_key": context['ti'].xcom_pull(task_ids='detect_new_files')['key'] 
         if context['ti'].xcom_pull(task_ids='detect_new_files') else None
     },
-    # Removing the python_callable parameter as it's not accepted with trigger_dag_id
-    trigger_rule='all_done',  # Only trigger if detect_new_files returns a value
+    trigger_rule='all_success',  # Changed from 'all_done' to 'all_success'
+    execution_date="{{ts}}",  # Add execution date to ensure unique runs
+    reset_dag_run=True,  # Reset any existing DAG runs with the same execution date
+    wait_for_completion=False,  # Don't wait for the triggered DAG to complete
+    poke_interval=30,  # Check every 30 seconds if wait_for_completion is True
     dag=dag,
 )
 

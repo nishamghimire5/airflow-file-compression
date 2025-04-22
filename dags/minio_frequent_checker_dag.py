@@ -130,7 +130,7 @@ trigger_processing_dag = TriggerDagRunOperator(
         "file_key": context['ti'].xcom_pull(task_ids='detect_new_files')['key']
         if context['ti'].xcom_pull(task_ids='detect_new_files') else None
     },
-    python_callable=None,  # Not used when providing a trigger_dag_id
+    # Removing the python_callable parameter as it's not accepted with trigger_dag_id
     trigger_rule='all_done',  # Only trigger if detect_new_files returns a value
     dag=dag,
 )

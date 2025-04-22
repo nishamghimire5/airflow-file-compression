@@ -78,6 +78,59 @@ This will start:
 - **MinIO Console**: http://localhost:9001
   - Login with default credentials (username: minioadmin, password: minioadmin)
 
+## Running Your DAGs in the Correct Order
+
+The project includes two main sets of DAGs:
+
+### File System Processing DAGs:
+
+- **file_sensor_dag** - Detects changes in the local filesystem
+- **file_workflow_dag** - Processes detected files (compresses and sends notifications)
+
+### MinIO Processing DAGs:
+
+- **minio_frequent_checker_dag** - Checks for new files in MinIO every 10 seconds
+- **minio_event_workflow_dag** - Processes files from MinIO (compresses and sends notifications)
+
+### Running Order
+
+#### For Local File Processing:
+
+1. **First Run**: `file_sensor_dag`
+
+   - This DAG monitors your local filesystem for new files
+   - It runs every 30 seconds to check for file events
+   - When it detects a new file, it automatically triggers the `file_workflow_dag`
+
+2. **Automatically Triggered**: `file_workflow_dag`
+   - This DAG is triggered by the sensor DAG when files are detected
+   - You should NOT need to manually run this DAG
+   - It compresses files and sends email notifications
+
+#### For MinIO Processing:
+
+1. **First Run**: `minio_frequent_checker_dag`
+
+   - This DAG checks MinIO every 10 seconds for new files
+   - When it detects a file upload in MinIO, it triggers the processing DAG
+   - This should be enabled if you want near real-time processing of MinIO uploads
+
+2. **Automatically Triggered**: `minio_event_workflow_dag`
+   - This DAG is triggered by the checker DAG when files are uploaded to MinIO
+   - You should NOT need to manually run this DAG
+   - It compresses the files in MinIO and sends email notifications
+
+### How to Enable the DAGs
+
+In the Airflow UI (http://localhost:8080), locate the DAGs list.
+
+Enable the "sensor" DAGs first:
+
+- Turn on the toggle switch for `file_sensor_dag` (for local file processing)
+- Turn on the toggle switch for `minio_frequent_checker_dag` (for MinIO processing)
+
+The processor DAGs (`file_workflow_dag` and `minio_event_workflow_dag`) will be triggered automatically, so they should be enabled but will only run when triggered.
+
 ## Using Local File Processing
 
 To use the local file processing workflow:
@@ -107,6 +160,20 @@ To use the MinIO event-driven workflow:
    - Compress it and store it in the "compressed-files" bucket
    - Move the original to the "processed-files" bucket
    - Send an email notification with file statistics
+
+## Testing the Setup
+
+### To test local file processing:
+
+1. Make sure `file_sensor_dag` is enabled
+2. Copy a test file to your shared folder: `/opt/airflow/shared_folder/`
+3. The sensor will detect it within 30 seconds and trigger processing
+
+### To test MinIO processing:
+
+1. Make sure `minio_frequent_checker_dag` is enabled
+2. Upload a file to the `source-files` bucket through the MinIO console (http://localhost:9001)
+3. The checker will detect it within 10 seconds and trigger processing
 
 ## How the Event-Driven System Works
 
@@ -171,6 +238,8 @@ For a true event-driven setup using MinIO webhooks:
 5. **MinIO not detecting files**:
    - Check buckets in the MinIO console
    - Ensure the `minio_frequent_checker_dag` is running
+
+Remember that the "sensor" DAGs are your entry points - they detect events and trigger the actual processing DAGs. You should see both types of DAGs in the Airflow UI, but you'll primarily enable and interact with the sensor DAGs.
 
 ## Customization
 

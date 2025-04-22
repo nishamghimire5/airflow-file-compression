@@ -529,7 +529,6 @@ trigger_processing_dag = TriggerDagRunOperator(
         "file_path": context['ti'].xcom_pull(task_ids='detect_file_events')[0] 
         if context['ti'].xcom_pull(task_ids='detect_file_events') else ""
     },
-    python_callable=None,  # Not used when providing a trigger_dag_id
     wait_for_completion=False,
     dag=sensor_dag,
     # Only trigger if new files are found

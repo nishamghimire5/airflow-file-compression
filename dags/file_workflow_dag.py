@@ -35,7 +35,7 @@ from airflow.utils.state import State
 WATCH_FOLDER = "/opt/airflow/shared_folder"  # Folder to monitor (mount this from host to container)
 PROCESSED_FOLDER = "/opt/airflow/shared_folder/processed"
 COMPRESSED_FOLDER = "/opt/airflow/shared_folder/compressed"
-EMAIL_RECIPIENT = "your_email@email.com"  # Your real email address
+EMAIL_RECIPIENT = "your_email@gmail.com"  # Your real email address
 
 # Email configuration - use Airflow's settings or override here
 EMAIL_SENDER = conf.get('smtp', 'smtp_mail_from', fallback='airflow@example.com')
@@ -514,6 +514,17 @@ send_email_task = PythonOperator(
 # Set task dependencies
 setup_task >> find_files_task >> check_file_exists_task >> compress_task >> get_specs_task >> send_email_task
 
+# Define a function to create the configuration for the TriggerDagRunOperator
+def create_workflow_conf(**kwargs):
+    """Create a JSON serializable configuration dictionary for the TriggerDagRunOperator."""
+    ti = kwargs['ti']
+    new_files = ti.xcom_pull(task_ids='detect_file_events')
+    
+    if new_files and len(new_files) > 0:
+        return {"file_path": new_files[0]}
+    else:
+        return {"file_path": ""}
+
 # Define sensor DAG tasks - these detect new files and trigger the processing DAG
 file_event_detection = PythonOperator(
     task_id='detect_file_events',
@@ -522,18 +533,21 @@ file_event_detection = PythonOperator(
     dag=sensor_dag,
 )
 
+# Fix the trigger mechanism to ensure it runs only when new files are found
+check_files_branch = ShortCircuitOperator(
+    task_id='check_files_branch',
+    python_callable=lambda ti: ti.xcom_pull(task_ids='detect_file_events') is not None,
+    provide_context=True,
+    dag=sensor_dag,
+)
+
 trigger_processing_dag = TriggerDagRunOperator(
     task_id='trigger_processing_dag',
     trigger_dag_id='file_workflow_dag',
-    conf=lambda context: {
-        "file_path": context['ti'].xcom_pull(task_ids='detect_file_events')[0] 
-        if context['ti'].xcom_pull(task_ids='detect_file_events') else ""
-    },
+    conf=create_workflow_conf,  # Using a function instead of lambda
     wait_for_completion=False,
     dag=sensor_dag,
-    # Only trigger if new files are found
-    trigger_rule='all_success',
 )
 
-# Set sensor DAG task dependencies
-file_event_detection >> trigger_processing_dag
+# Set sensor DAG task dependencies with the branch operator
+file_event_detection >> check_files_branch >> trigger_processing_dag

@@ -3,21 +3,21 @@
 This project implements event-driven Airflow DAGs that process files using two methods:
 
 1. Local filesystem monitoring with real-time file detection
-2. MinIO object storage with event-driven processing
+2. MinIO object storage with scheduled processing
 
 ## Features
 
 ### Local File Processing
 
-- **Real-time Monitoring**: Checks for new files every minute
+- **Real-time Monitoring**: Checks for new files every 30 seconds
 - **Automatic Compression**: Compresses newly uploaded files using ZIP format
 - **Email Notifications**: Sends detailed reports with file specifications
 - **File Organization**: Maintains processed and compressed file directories
 
-### MinIO File Processing (Event-Driven)
+### MinIO File Processing
 
 - **Object Storage Integration**: Works with MinIO S3-compatible storage
-- **Event-Driven Processing**: Near real-time file detection using high-frequency polling
+- **Scheduled Processing**: Checks for new files every minute
 - **Automated File Compression**: Compresses files uploaded to MinIO
 - **Bucket Organization**: Separate buckets for source, processed, and compressed files
 - **Email Reports**: Detailed email notifications with file statistics
@@ -37,13 +37,12 @@ This project implements event-driven Airflow DAGs that process files using two m
 
 ### DAGs
 
-- **file_workflow_dag.py**: Monitors local filesystem for new files
-- **minio_event_workflow_dag.py**: Processes files uploaded to MinIO buckets
-- **minio_frequent_checker_dag.py**: Checks MinIO for new files every 10 seconds
+- **file_workflow_dag.py**: Main DAG for processing local files (triggered by file_sensor_dag)
+- **unified_minio_processing_dag.py**: Single DAG that handles all MinIO operations (checking for new files and processing them)
 
 ### Helper Components
 
-- **plugins/minio_event_handler.py**: Webhook handler for MinIO events
+- **plugins/minio_event_handler.py**: Optional webhook handler for MinIO events (if event-based triggering is preferred)
 - **setup_minio_events.py**: Creates required MinIO buckets
 - **setup_minio_notifications.py**: Configures MinIO event notifications
 
@@ -84,52 +83,47 @@ The project includes two main sets of DAGs:
 
 ### File System Processing DAGs:
 
-- **file_sensor_dag** - Detects changes in the local filesystem
+- **file_sensor_dag** - Detects changes in the local filesystem every 30 seconds
 - **file_workflow_dag** - Processes detected files (compresses and sends notifications)
 
-### MinIO Processing DAGs:
+### MinIO Processing DAG:
 
-- **minio_frequent_checker_dag** - Checks for new files in MinIO every 10 seconds
-- **minio_event_workflow_dag** - Processes files from MinIO (compresses and sends notifications)
+- **unified_minio_processing_dag** - Comprehensive DAG that both checks for new files in MinIO every minute and processes them
 
 ### Running Order
 
 #### For Local File Processing:
 
-1. **First Run**: `file_sensor_dag`
+1. **First Enable**: `file_sensor_dag`
 
    - This DAG monitors your local filesystem for new files
    - It runs every 30 seconds to check for file events
    - When it detects a new file, it automatically triggers the `file_workflow_dag`
 
-2. **Automatically Triggered**: `file_workflow_dag`
+2. **Also Enable**: `file_workflow_dag`
    - This DAG is triggered by the sensor DAG when files are detected
-   - You should NOT need to manually run this DAG
    - It compresses files and sends email notifications
 
 #### For MinIO Processing:
 
-1. **First Run**: `minio_frequent_checker_dag`
-
-   - This DAG checks MinIO every 10 seconds for new files
-   - When it detects a file upload in MinIO, it triggers the processing DAG
-   - This should be enabled if you want near real-time processing of MinIO uploads
-
-2. **Automatically Triggered**: `minio_event_workflow_dag`
-   - This DAG is triggered by the checker DAG when files are uploaded to MinIO
-   - You should NOT need to manually run this DAG
+1. **Enable**: `unified_minio_processing_dag`
+   - This DAG checks MinIO every minute for new files
+   - When it finds unprocessed files, it automatically processes them
    - It compresses the files in MinIO and sends email notifications
+   - All MinIO processing is handled by this single DAG
 
 ### How to Enable the DAGs
 
 In the Airflow UI (http://localhost:8080), locate the DAGs list.
 
-Enable the "sensor" DAGs first:
+To enable local file processing:
 
-- Turn on the toggle switch for `file_sensor_dag` (for local file processing)
-- Turn on the toggle switch for `minio_frequent_checker_dag` (for MinIO processing)
+- Turn on the toggle switch for `file_sensor_dag`
+- Turn on the toggle switch for `file_workflow_dag`
 
-The processor DAGs (`file_workflow_dag` and `minio_event_workflow_dag`) will be triggered automatically, so they should be enabled but will only run when triggered.
+To enable MinIO file processing:
+
+- Turn on the toggle switch for `unified_minio_processing_dag`
 
 ## Using Local File Processing
 
@@ -146,17 +140,18 @@ To use the local file processing workflow:
 
 3. Check the processed and compressed folders to see the results.
 
-## Using MinIO Event-Driven Processing
+## Using MinIO Scheduled Processing
 
-To use the MinIO event-driven workflow:
+To use the MinIO workflow:
 
 1. Access the MinIO console at http://localhost:9001
 
 2. Navigate to the "source-files" bucket
 
 3. Upload files through the MinIO web interface
+
 4. The system will automatically:
-   - Detect the new file (within 10 seconds)
+   - Detect the new file (within a minute)
    - Compress it and store it in the "compressed-files" bucket
    - Move the original to the "processed-files" bucket
    - Send an email notification with file statistics
@@ -165,31 +160,34 @@ To use the MinIO event-driven workflow:
 
 ### To test local file processing:
 
-1. Make sure `file_sensor_dag` is enabled
+1. Make sure `file_sensor_dag` and `file_workflow_dag` are enabled
 2. Copy a test file to your shared folder: `/opt/airflow/shared_folder/`
 3. The sensor will detect it within 30 seconds and trigger processing
 
 ### To test MinIO processing:
 
-1. Make sure `minio_frequent_checker_dag` is enabled
+1. Make sure `unified_minio_processing_dag` is enabled
 2. Upload a file to the `source-files` bucket through the MinIO console (http://localhost:9001)
-3. The checker will detect it within 10 seconds and trigger processing
+3. The DAG will detect it within a minute and process it
 
-## How the Event-Driven System Works
+## How the System Works
 
-1. The `minio_frequent_checker_dag` runs every 10 seconds to check for new files in the MinIO "source-files" bucket
+### Local File Processing:
 
-2. When new files are detected, it triggers the main processing DAG (`minio_event_workflow_dag`)
+1. The `file_sensor_dag` runs every 30 seconds to check for new files in the shared folder
+2. When new files are detected, it triggers the main processing DAG (`file_workflow_dag`)
+3. The processing DAG compresses files and sends notifications
 
-3. The processing DAG:
+### MinIO Processing:
 
+1. The `unified_minio_processing_dag` runs every minute
+2. It checks for files in the "source-files" bucket that haven't been processed yet
+3. For each new file, it:
    - Downloads the file from MinIO
    - Compresses it
    - Uploads the compressed version to the "compressed-files" bucket
    - Copies the original file to the "processed-files" bucket
    - Sends an email notification with file details
-
-4. This architecture provides near real-time processing with minimal resource overhead
 
 ## Advanced: True Event-Driven Setup
 
@@ -208,6 +206,8 @@ For a true event-driven setup using MinIO webhooks:
    ```
 
 2. With this setup, MinIO will directly notify Airflow when files are uploaded, eliminating any polling delay.
+
+3. Make sure the `minio_event_handler.py` plugin is properly installed in your Airflow plugins directory.
 
 ## Troubleshooting
 
@@ -236,10 +236,8 @@ For a true event-driven setup using MinIO webhooks:
    ```
 
 5. **MinIO not detecting files**:
-   - Check buckets in the MinIO console
-   - Ensure the `minio_frequent_checker_dag` is running
-
-Remember that the "sensor" DAGs are your entry points - they detect events and trigger the actual processing DAGs. You should see both types of DAGs in the Airflow UI, but you'll primarily enable and interact with the sensor DAGs.
+   - Ensure all the buckets exist: source-files, processed-files, and compressed-files
+   - Check that the `unified_minio_processing_dag` is running on schedule
 
 ## Customization
 

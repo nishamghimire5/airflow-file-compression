@@ -52,17 +52,18 @@ def handle_minio_event():
             
             # Trigger the DAG with the file information
             dagbag = DagBag()
-            if 'minio_event_workflow_dag' in dagbag.dags:
-                logger.info(f"Triggering DAG for file: {object_key}")
+            # Update DAG ID to use our unified DAG
+            if 'unified_minio_processing_dag' in dagbag.dags:
+                logger.info(f"Triggering unified DAG for file: {object_key}")
                 run_id = f"minio_event_{bucket}_{object_key.replace('/', '_')}_{int(time.time())}"
                 trigger_dag(
-                    dag_id='minio_event_workflow_dag',
+                    dag_id='unified_minio_processing_dag',
                     run_id=run_id,
                     conf={'file_key': object_key, 'bucket': bucket, 'size': size}
                 )
-                logger.info(f"DAG triggered with run_id: {run_id}")
+                logger.info(f"Unified DAG triggered with run_id: {run_id}")
             else:
-                logger.error(f"DAG 'minio_event_workflow_dag' not found in DAG bag")
+                logger.error(f"DAG 'unified_minio_processing_dag' not found in DAG bag")
                 return Response("DAG not found", status=404)
         
         return Response("Event processed successfully", status=200)

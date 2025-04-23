@@ -43,13 +43,13 @@ MINIO_SECRET_KEY = 'minioadmin'
 SOURCE_BUCKET = 'source-files'      # Source bucket for new files
 PROCESSED_BUCKET = 'processed-files' # Bucket for processed files
 COMPRESSED_BUCKET = 'compressed-files' # Bucket for compressed files
-EMAIL_RECIPIENT = "your_email@gmail.com"  # Your email address
+EMAIL_RECIPIENT = "your_email@email.com"  # Your email address
 
 # Email configuration - use Airflow's settings
 EMAIL_SENDER = conf.get('smtp', 'smtp_mail_from', fallback='airflow@example.com')
 SMTP_HOST = conf.get('smtp', 'smtp_host', fallback='smtp.gmail.com')
 SMTP_PORT = int(conf.get('smtp', 'smtp_port', fallback=587))
-SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@gmail.com')
+SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@email.com')
 SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')
 USE_TLS = conf.getboolean('smtp', 'smtp_starttls', fallback=True)
 

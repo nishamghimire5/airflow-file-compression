@@ -34,7 +34,7 @@ services:
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=your_email@email.com
       - AIRFLOW__SMTP__SMTP_USER=your_email@email.com
-      - AIRFLOW__SMTP__SMTP_PASSWORD=<YOUR_APP_PASSWORD>
+      - AIRFLOW__SMTP__SMTP_PASSWORD=YOUR_APP_PASSWORD
     volumes:
       - ./dags:/opt/airflow/dags
       - ./shared_folder:/opt/airflow/shared_folder
@@ -64,7 +64,7 @@ services:
       - AIRFLOW__SMTP__SMTP_PORT=587
       - AIRFLOW__SMTP__SMTP_MAIL_FROM=your_email@email.com
       - AIRFLOW__SMTP__SMTP_USER=your_email@email.com
-      - AIRFLOW__SMTP__SMTP_PASSWORD=<YOUR_APP_PASSWORD>
+      - AIRFLOW__SMTP__SMTP_PASSWORD=YOUR_APP_PASSWORD
     volumes:
       - ./dags:/opt/airflow/dags
       - ./shared_folder:/opt/airflow/shared_folder

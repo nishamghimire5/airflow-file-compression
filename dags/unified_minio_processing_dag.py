@@ -50,7 +50,7 @@ EMAIL_SENDER = conf.get('smtp', 'smtp_mail_from', fallback='airflow@example.com'
 SMTP_HOST = conf.get('smtp', 'smtp_host', fallback='smtp.gmail.com')
 SMTP_PORT = int(conf.get('smtp', 'smtp_port', fallback=587))
 SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@email.com')
-SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')
+SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='YOUR_APP_PASSWORD')
 USE_TLS = conf.getboolean('smtp', 'smtp_starttls', fallback=True)
 
 # Logging configuration

@@ -18,7 +18,45 @@ git clone <repository-url>
 cd airflow-file-compression
 ```
 
-### Step 3: Start the Docker Environment
+### Step 3: Configure Email Settings
+
+Before starting the services, update the email and password settings in the following files:
+
+#### a) In `dags/unified_minio_processing_dag.py`:
+
+```python
+# Replace these lines with your own email and app password
+EMAIL_RECIPIENT = "your_email@gmail.com"  # Replace with your email
+SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@gmail.com')  # Replace with your email
+SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')  # Replace with your app password
+```
+
+#### b) In `dags/file_workflow_dag.py`:
+
+```python
+# Replace these lines with your own email and app password
+EMAIL_RECIPIENT = "your_email@gmail.com"  # Replace with your email
+SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@gmail.com')  # Replace with your email
+SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')  # Replace with your app password
+```
+
+#### c) In `docker-compose.yaml`:
+
+```yaml
+# Find these environment variables in the webserver and scheduler services and update them
+- AIRFLOW__SMTP__SMTP_MAIL_FROM=your_email@gmail.com # Replace with your email
+- AIRFLOW__SMTP__SMTP_USER=your_email@gmail.com # Replace with your email
+- AIRFLOW__SMTP__SMTP_PASSWORD=your_app_password # Replace with your app password
+```
+
+Note: For Gmail, you'll need to create an App Password:
+
+1. Go to your Google Account
+2. Select Security
+3. Under "Signing in to Google," select App Passwords
+4. Generate a new app password for "Mail" application
+
+### Step 4: Start the Docker Environment
 
 ```bash
 # Create a Docker network first (helps avoid network conflicts)
@@ -28,35 +66,35 @@ docker network create airflow-compression-network
 docker-compose up -d
 ```
 
-### Step 4: Wait for Services to Initialize (about 1-2 minutes)
+### Step 5: Wait for Services to Initialize (about 1-2 minutes)
 
 The first startup takes a bit longer as Docker downloads required images and initializes the databases.
 
-### Step 5: Access the Airflow Web UI
+### Step 6: Access the Airflow Web UI
 
 - Open http://localhost:8080 in your browser
 - Login with these credentials:
   - Username: `admin`
   - Password: `admin`
 
-### Step 6: Access the MinIO Console
+### Step 7: Access the MinIO Console
 
 - Open http://localhost:9001 in your browser
 - Login with these credentials:
   - Username: `minioadmin`
   - Password: `minioadmin`
 
-### Step 7: Set up MinIO Buckets
+### Step 8: Set up MinIO Buckets
 
 The system needs three buckets: `source-files`, `processed-files`, and `compressed-files`. These will be automatically created when you start the unified_minio_processing_dag.
 
-### Step 8: Enable the DAG
+### Step 9: Enable the DAG
 
 1. In the Airflow Web UI, find `unified_minio_processing_dag` in the DAG list
 2. Click the toggle switch on the left to enable it
 3. The DAG will now run every minute, checking for new files to process
 
-### Step 9: Test the Workflow
+### Step 10: Test the Workflow
 
 1. Go to the MinIO console (http://localhost:9001)
 2. Navigate to the `source-files` bucket (create it if it doesn't exist)
@@ -67,7 +105,7 @@ The system needs three buckets: `source-files`, `processed-files`, and `compress
    - Move the original to `processed-files` bucket
    - Send an email notification (if email is configured correctly)
 
-### Step 10: Check Results
+### Step 11: Check Results
 
 1. In Airflow UI, check the DAG runs to see if processing completed successfully
 2. In MinIO, verify that your file appears in both `compressed-files` (as a .zip) and `processed-files`

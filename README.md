@@ -1,5 +1,89 @@
 # Event-Driven File Processing with Airflow and MinIO
 
+## Quick Start Guide
+
+Just cloned this repo? Follow these steps to get the project running:
+
+### Step 1: Prerequisites
+
+Ensure these are installed on your system:
+
+- Docker and Docker Compose
+- Git (to clone the repository)
+
+### Step 2: Clone the Repository (if you haven't already)
+
+```bash
+git clone <repository-url>
+cd airflow-file-compression
+```
+
+### Step 3: Start the Docker Environment
+
+```bash
+# Create a Docker network first (helps avoid network conflicts)
+docker network create airflow-compression-network
+
+# Start all services
+docker-compose up -d
+```
+
+### Step 4: Wait for Services to Initialize (about 1-2 minutes)
+
+The first startup takes a bit longer as Docker downloads required images and initializes the databases.
+
+### Step 5: Access the Airflow Web UI
+
+- Open http://localhost:8080 in your browser
+- Login with these credentials:
+  - Username: `admin`
+  - Password: `admin`
+
+### Step 6: Access the MinIO Console
+
+- Open http://localhost:9001 in your browser
+- Login with these credentials:
+  - Username: `minioadmin`
+  - Password: `minioadmin`
+
+### Step 7: Set up MinIO Buckets
+
+The system needs three buckets: `source-files`, `processed-files`, and `compressed-files`. These will be automatically created when you start the unified_minio_processing_dag.
+
+### Step 8: Enable the DAG
+
+1. In the Airflow Web UI, find `unified_minio_processing_dag` in the DAG list
+2. Click the toggle switch on the left to enable it
+3. The DAG will now run every minute, checking for new files to process
+
+### Step 9: Test the Workflow
+
+1. Go to the MinIO console (http://localhost:9001)
+2. Navigate to the `source-files` bucket (create it if it doesn't exist)
+3. Upload a file (any text file, PDF, etc.)
+4. Within a minute, the system will:
+   - Detect the new file
+   - Compress it and store it in `compressed-files` bucket
+   - Move the original to `processed-files` bucket
+   - Send an email notification (if email is configured correctly)
+
+### Step 10: Check Results
+
+1. In Airflow UI, check the DAG runs to see if processing completed successfully
+2. In MinIO, verify that your file appears in both `compressed-files` (as a .zip) and `processed-files`
+
+### Common Issues
+
+- **Network Problems**: If containers can't communicate, try restarting Docker and recreating the network
+- **Email Errors**: Verify SMTP settings in `unified_minio_processing_dag.py` if you're not receiving emails
+- **Permissions**: Ensure Docker has proper permissions to mount volumes
+
+### Next Steps
+
+Once you've confirmed the basic setup is working, explore the detailed documentation below to understand how the system works and how to customize it.
+
+---
+
 This project implements event-driven Airflow DAGs that process files using two methods:
 
 1. Local filesystem monitoring with real-time file detection

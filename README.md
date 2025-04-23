@@ -31,16 +31,7 @@ SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@gmail.com')  # Re
 SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')  # Replace with your app password
 ```
 
-#### b) In `dags/file_workflow_dag.py`:
-
-```python
-# Replace these lines with your own email and app password
-EMAIL_RECIPIENT = "your_email@gmail.com"  # Replace with your email
-SMTP_USER = conf.get('smtp', 'smtp_user', fallback='your_email@gmail.com')  # Replace with your email
-SMTP_PASSWORD = conf.get('smtp', 'smtp_password', fallback='your_app_password')  # Replace with your app password
-```
-
-#### c) In `docker-compose.yaml`:
+#### b) In `docker-compose.yaml`:
 
 ```yaml
 # Find these environment variables in the webserver and scheduler services and update them
@@ -122,19 +113,9 @@ Once you've confirmed the basic setup is working, explore the detailed documenta
 
 ---
 
-This project implements event-driven Airflow DAGs that process files using two methods:
-
-1. Local filesystem monitoring with real-time file detection
-2. MinIO object storage with scheduled processing
+This project implements event-driven Airflow DAGs that process files in MinIO object storage with scheduled processing.
 
 ## Features
-
-### Local File Processing
-
-- **Real-time Monitoring**: Checks for new files every 30 seconds
-- **Automatic Compression**: Compresses newly uploaded files using ZIP format
-- **Email Notifications**: Sends detailed reports with file specifications
-- **File Organization**: Maintains processed and compressed file directories
 
 ### MinIO File Processing
 
@@ -159,7 +140,6 @@ This project implements event-driven Airflow DAGs that process files using two m
 
 ### DAGs
 
-- **file_workflow_dag.py**: Main DAG for processing local files (triggered by file_sensor_dag)
 - **unified_minio_processing_dag.py**: Single DAG that handles all MinIO operations (checking for new files and processing them)
 
 ### Helper Components
@@ -172,7 +152,7 @@ This project implements event-driven Airflow DAGs that process files using two m
 
 ### 1. Configure Email Settings
 
-Edit the DAG files to set your email address:
+Edit the DAG file to set your email address:
 
 ```python
 EMAIL_RECIPIENT = "your_email@example.com"  # Replace with your email
@@ -199,68 +179,21 @@ This will start:
 - **MinIO Console**: http://localhost:9001
   - Login with default credentials (username: minioadmin, password: minioadmin)
 
-## Running Your DAGs in the Correct Order
+## Running Your DAG
 
-The project includes two main sets of DAGs:
-
-### File System Processing DAGs:
-
-- **file_sensor_dag** - Detects changes in the local filesystem every 30 seconds
-- **file_workflow_dag** - Processes detected files (compresses and sends notifications)
+The project includes one main DAG for MinIO processing:
 
 ### MinIO Processing DAG:
 
 - **unified_minio_processing_dag** - Comprehensive DAG that both checks for new files in MinIO every minute and processes them
 
-### Running Order
-
-#### For Local File Processing:
-
-1. **First Enable**: `file_sensor_dag`
-
-   - This DAG monitors your local filesystem for new files
-   - It runs every 30 seconds to check for file events
-   - When it detects a new file, it automatically triggers the `file_workflow_dag`
-
-2. **Also Enable**: `file_workflow_dag`
-   - This DAG is triggered by the sensor DAG when files are detected
-   - It compresses files and sends email notifications
-
-#### For MinIO Processing:
-
-1. **Enable**: `unified_minio_processing_dag`
-   - This DAG checks MinIO every minute for new files
-   - When it finds unprocessed files, it automatically processes them
-   - It compresses the files in MinIO and sends email notifications
-   - All MinIO processing is handled by this single DAG
-
-### How to Enable the DAGs
+### How to Enable the DAG
 
 In the Airflow UI (http://localhost:8080), locate the DAGs list.
-
-To enable local file processing:
-
-- Turn on the toggle switch for `file_sensor_dag`
-- Turn on the toggle switch for `file_workflow_dag`
 
 To enable MinIO file processing:
 
 - Turn on the toggle switch for `unified_minio_processing_dag`
-
-## Using Local File Processing
-
-To use the local file processing workflow:
-
-1. Create files in the shared folder mounted to the Docker container:
-
-   ```bash
-   # Copy a file to the shared folder
-   cp test_file.txt ./shared_folder/
-   ```
-
-2. The DAG will detect the new file, compress it, and send an email notification within a minute.
-
-3. Check the processed and compressed folders to see the results.
 
 ## Using MinIO Scheduled Processing
 
@@ -280,12 +213,6 @@ To use the MinIO workflow:
 
 ## Testing the Setup
 
-### To test local file processing:
-
-1. Make sure `file_sensor_dag` and `file_workflow_dag` are enabled
-2. Copy a test file to your shared folder: `/opt/airflow/shared_folder/`
-3. The sensor will detect it within 30 seconds and trigger processing
-
 ### To test MinIO processing:
 
 1. Make sure `unified_minio_processing_dag` is enabled
@@ -293,12 +220,6 @@ To use the MinIO workflow:
 3. The DAG will detect it within a minute and process it
 
 ## How the System Works
-
-### Local File Processing:
-
-1. The `file_sensor_dag` runs every 30 seconds to check for new files in the shared folder
-2. When new files are detected, it triggers the main processing DAG (`file_workflow_dag`)
-3. The processing DAG compresses files and sends notifications
 
 ### MinIO Processing:
 
@@ -333,31 +254,25 @@ For a true event-driven setup using MinIO webhooks:
 
 ## Troubleshooting
 
-1. **Permission issues**:
-
-   ```bash
-   docker exec airflow-webserver ls -la /shared_folder
-   ```
-
-2. **Email sending failures**:
+1. **Email sending failures**:
 
    - Verify SMTP settings in the DAG files
    - For Gmail, you might need to create an App Password
 
-3. **MinIO connectivity issues**:
+2. **MinIO connectivity issues**:
 
    ```bash
    docker exec airflow-webserver curl -v http://minio:9000
    ```
 
-4. **DAG not running**:
+3. **DAG not running**:
 
    ```bash
    docker logs airflow-scheduler
    docker logs airflow-webserver
    ```
 
-5. **MinIO not detecting files**:
+4. **MinIO not detecting files**:
    - Ensure all the buckets exist: source-files, processed-files, and compressed-files
    - Check that the `unified_minio_processing_dag` is running on schedule
 
